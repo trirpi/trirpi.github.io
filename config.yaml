@@ -3,6 +3,15 @@ languageCode: en-us
 title: Tristan Trouwen
 theme: mini
 
+# Enable robots.txt generation
+enableRobotsTXT: true
+
+# Sitemap configuration
+sitemap:
+  changefreq: weekly
+  filename: sitemap.xml
+  priority: 0.5
+
 # Default content language, support en (English) / zh (Chinese) / nl (Dutch) / fr (French) / es (Spanish) / da (Danish), default 'en'
 defaultContentLanguage: en
 
