@@ -44,6 +44,11 @@ flowchart TB
     scratch <--> mem
 ```
 
+**How it flows:**
+- All 5 engines (ALU, VALU, LOAD, STORE, FLOW) execute **in parallel** every cycle - that's the VLIW magic
+- Engines read/write to **Scratch Space**, which acts like a register file + cache
+- LOAD/STORE move data between Scratch and **Main Memory**, where the actual problem data lives
+
 The key insight: **multiple engines execute in parallel each cycle**. In a single clock cycle, you can run:
 - 12 scalar ALU ops
 - 6 vector ALU ops (each processing 8 elements)
