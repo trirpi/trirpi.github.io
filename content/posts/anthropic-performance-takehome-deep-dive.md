@@ -417,25 +417,6 @@ You can't compute the next tree index until you've hashed the current value. Tha
 
 ---
 
-## Try It Yourself
-
-```bash
-git clone https://github.com/anthropics/original_performance_takehome.git
-cd original_performance_takehome
-python perf_takehome.py Tests.test_kernel_cycles
-```
-
-Output:
-```
-forest_height=10, rounds=16, batch_size=256
-CYCLES:  147734
-Speedup over baseline:  1.0
-```
-
-Beat Claude's 1,487 cycles? Email performance-recruiting@anthropic.com - they're hiring!
-
----
-
 ## Further Reading
 
 - [VLIW Architecture - Wikipedia](https://en.wikipedia.org/wiki/Very_long_instruction_word)
