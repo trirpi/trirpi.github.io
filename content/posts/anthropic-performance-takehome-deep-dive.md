@@ -26,13 +26,13 @@ I'm [Tristan](https://github.com/trirpi) ([@trirpi](https://twitter.com/trirpi))
 
 ## The Architecture at a Glance
 
-This is a **[VLIW](https://en.wikipedia.org/wiki/Very_long_instruction_word)** (Very Long Instruction Word) **[SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)** (Single Instruction Multiple Data) processor. Let me break down what that means.
+This is a **[VLIW](https://en.wikipedia.org/wiki/Very_long_instruction_word)** (Very Long Instruction Word) **[SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)** (Single Instruction Multiple Data) processor with a **single core** (older versions of the take-home had multiple cores). Let me break down what that means.
 
 ### VLIW: Compiler-Scheduled Parallelism
 
 In a traditional processor, hardware figures out at runtime which instructions can run in parallel. In a **VLIW** processor, that job shifts to the **compiler** (or in this case, you). 
 
-The processor has multiple functional units that can all execute simultaneously:
+The single core has multiple functional units that can all execute simultaneously:
 
 | Unit | Count | Operations |
 |------|-------|------------|
@@ -49,7 +49,7 @@ You pack operations into **instruction bundles**. Each cycle, the processor exec
 {"alu": [op1, op2, op3], "valu": [vop1, vop2], "load": [ld1, ld2]}
 ```
 
-With 6 VALUs each processing 8 elements, you can theoretically do **12 + 48 = 60** arithmetic operations per cycle.
+With 12 ALUs and 6 VALUs (each processing 8 elements), this single core can theoretically do **12 + 6×8 = 60** arithmetic operations per cycle.
 
 ### Memory Hierarchy
 
