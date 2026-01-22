@@ -15,7 +15,7 @@ sitemap:
 defaultContentLanguage: en
 
 permalinks:
-  posts: /posts/:title/
+  posts: /posts/:slug/
 
 pagination:
   pagerSize: 5
