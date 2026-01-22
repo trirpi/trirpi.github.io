@@ -29,30 +29,17 @@ I'm [Tristan](https://github.com/trirpi) ([@trirpi](https://twitter.com/trirpi))
 Here's what we're dealing with:
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph cycle["⚡ Single Cycle Execution"]
-        direction LR
-        ALU["<b>ALU</b><br/>12 slots"]
-        VALU["<b>VALU</b><br/>6 slots<br/>(VLEN=8)"]
-        LOAD["<b>LOAD</b><br/>2 slots"]
-        STORE["<b>STORE</b><br/>2 slots"]
-        FLOW["<b>FLOW</b><br/>1 slot"]
+        ALU["ALU<br/>12 slots"] 
+        VALU["VALU<br/>6 slots"]
+        LOAD["LOAD<br/>2 slots"]
+        STORE["STORE<br/>2 slots"]
+        FLOW["FLOW<br/>1 slot"]
     end
     
-    subgraph scratch["📦 Scratch Space (1536 words)"]
-        REG["registers + constants + cache"]
-    end
-    
-    subgraph mem["💾 Main Memory"]
-        direction LR
-        HEADER["Header<br/>(7 words)"]
-        TREE["Tree Values<br/>(2047 words)"]
-        IDX["Indices<br/>(256 words)"]
-        VAL["Values<br/>(256 words)"]
-    end
-    
-    cycle --> scratch
-    scratch <--> mem
+    cycle --> SCRATCH["📦 Scratch Space<br/>1536 words"]
+    SCRATCH <--> MEM["💾 Main Memory<br/>Header | Tree | Indices | Values"]
 ```
 
 The key insight: **multiple engines execute in parallel each cycle**. In a single clock cycle, you can run:
@@ -84,19 +71,12 @@ SLOT_LIMITS = {
 
 ```mermaid
 flowchart LR
-    subgraph bundle["📦 Instruction Bundle (1 clock cycle)"]
-        subgraph compute["Compute"]
-            ALU["<b>alu:</b><br/>('+', dest, a, b)<br/>('-', dest, a, b)<br/>('*', dest, a, b)<br/><i>...up to 12</i>"]
-            VALU["<b>valu:</b><br/>('*', vdest, va, vb)<br/>('+', vdest, va, vb)<br/><i>...up to 6</i>"]
-        end
-        subgraph memory["Memory"]
-            LOAD["<b>load:</b><br/>('load', dest, addr)<br/>('vload', vdest, addr)"]
-            STORE["<b>store:</b><br/>('store', addr, src)<br/>('vstore', addr, vsrc)"]
-        end
-        subgraph control["Control"]
-            FLOW["<b>flow:</b><br/>('select', d, c, a, b)"]
-            DEBUG["<b>debug:</b><br/>('compare', loc, key)<br/><i>(not counted)</i>"]
-        end
+    subgraph bundle["📦 One Instruction Bundle = 1 Cycle"]
+        ALU["alu: +, -, *, /, ^, &, |, <<, >><br/><i>up to 12 ops</i>"]
+        VALU["valu: vector ops<br/><i>up to 6 ops</i>"]
+        LOAD["load/vload<br/><i>up to 2 ops</i>"]
+        STORE["store/vstore<br/><i>up to 2 ops</i>"]
+        FLOW["flow: select, jump<br/><i>1 op</i>"]
     end
 ```
 
@@ -118,30 +98,14 @@ This executes **three operations in one cycle**:
 The kernel implements a batched tree traversal with hashing. Here's the flow:
 
 ```mermaid
-flowchart TD
-    subgraph rounds["🔄 16 Rounds"]
-        R0["Round 0"] --> R1["Round 1"] --> R2["Round 2"] --> RN["..."]
-    end
-    
-    R0 --> batch
-    
-    subgraph batch["📊 Batch of 256 items"]
-        direction LR
-        B0["Item 0"]
-        B1["Item 1"]
-        B2["Item 2"]
-        BN["..."]
-    end
-    
-    batch --> ALGO
-    
-    subgraph ALGO["⚙️ Per-item computation"]
-        A1["idx = indices[i]"] --> A2["val = values[i]"]
-        A2 --> A3["node_val = tree[idx]"]
-        A3 --> A4["val = hash(val ^ node_val)"]
-        A4 --> A5["idx = 2*idx + (1 if even else 2)"]
-        A5 --> A6["if idx >= n_nodes: idx = 0"]
-    end
+flowchart LR
+    ROUNDS["🔄 16 Rounds"] --> BATCH["📊 256 Items"]
+    BATCH --> A1["Load idx, val"]
+    A1 --> A2["XOR with tree node"]
+    A2 --> A3["Hash"]
+    A3 --> A4["Pick left/right child"]
+    A4 --> A5["Wrap if overflow"]
+    A5 --> STORE["Store idx, val"]
 ```
 
 From the [reference kernel](https://github.com/anthropics/original_performance_takehome/blob/main/problem.py#L467-L484):
@@ -175,15 +139,8 @@ That's `256 × 16 = 4096` traversal steps, each involving a hash computation.
 ### The Hash Function
 
 ```mermaid
-flowchart TD
-    IN(["🔢 Input: a"]) --> S0
-    S0["Stage 0: a = (a + 0x7ED55D16) + (a << 12)"] --> S1
-    S1["Stage 1: a = (a ^ 0xC761C23C) ^ (a >> 19)"] --> S2
-    S2["Stage 2: a = (a + 0x165667B1) + (a << 5)"] --> S3
-    S3["Stage 3: a = (a + 0xD3A2646C) ^ (a << 9)"] --> S4
-    S4["Stage 4: a = (a + 0xFD7046C5) + (a << 3)"] --> S5
-    S5["Stage 5: a = (a ^ 0xB55A4F09) ^ (a >> 16)"] --> OUT
-    OUT(["🎯 Output hash"])
+flowchart LR
+    IN(["Input a"]) --> S0["Stage 0"] --> S1["Stage 1"] --> S2["Stage 2"] --> S3["Stage 3"] --> S4["Stage 4"] --> S5["Stage 5"] --> OUT(["Hash"])
 ```
 
 Each stage = 3 ALU ops: `tmp1 = a op1 const`, `tmp2 = a op3 shift`, `a = tmp1 op2 tmp2`
