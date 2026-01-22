@@ -26,7 +26,30 @@ I'm [Tristan](https://github.com/trirpi) ([@trirpi](https://twitter.com/trirpi))
 
 ## The Architecture at a Glance
 
-This is a **VLIW** (Very Long Instruction Word) **SIMD** (Single Instruction Multiple Data) processor. Let me break down what that means.
+This is a **[VLIW](https://en.wikipedia.org/wiki/Very_long_instruction_word)** (Very Long Instruction Word) **[SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)** (Single Instruction Multiple Data) processor. Let me break down what that means.
+
+### VLIW: Compiler-Scheduled Parallelism
+
+In a traditional processor, hardware figures out at runtime which instructions can run in parallel. In a **VLIW** processor, that job shifts to the **compiler** (or in this case, you). 
+
+The processor has multiple functional units that can all execute simultaneously:
+
+| Unit | Count | Operations |
+|------|-------|------------|
+| ALU | **12** | Scalar: `+`, `-`, `*`, `/`, `^`, `&`, `\|`, `<<`, `>>`, `%`, `<`, `==` |
+| VALU | **6** | Vector (8 elements): same ops as ALU |
+| LOAD | **2** | `load`, `vload` (8 words), `const` |
+| STORE | **2** | `store`, `vstore` (8 words) |
+| FLOW | **1** | `select`, `jump`, `cond_jump`, `halt` |
+
+You pack operations into **instruction bundles**. Each cycle, the processor executes one bundle, dispatching operations to all the units in parallel. If you only put one operation in a bundle, the other units sit idle. That's why the baseline is so slow.
+
+**Example bundle** (executes in 1 cycle):
+```python
+{"alu": [op1, op2, op3], "valu": [vop1, vop2], "load": [ld1, ld2]}
+```
+
+With 6 VALUs each processing 8 elements, you can theoretically do **12 + 48 = 60** arithmetic operations per cycle.
 
 ### Memory Hierarchy
 
@@ -37,31 +60,15 @@ flowchart LR
     end
     
     subgraph scratch["📦 SCRATCH SPACE (1536 words)"]
-        REG["Works like registers + cache<br/>All ALU ops read/write here"]
+        REG["Works like registers<br/>All ALU ops read/write here"]
     end
     
-    mem <-->|"LOAD: mem → scratch<br/>STORE: scratch → mem<br/>⚠️ Only 2 each per cycle!"| scratch
+    mem <-->|"LOAD/STORE<br/>⚠️ 2 each per cycle"| scratch
 ```
 
-- **Main Memory**: Where the problem input lives (tree nodes, batch indices, batch values). Persists across the program.
-- **Scratch Space**: Fast 1536-word storage. Think of it as registers. ALU operations *only* read/write scratch - they can't touch main memory directly.
-- **Bandwidth bottleneck**: Only **2 loads** and **2 stores** per cycle. This is often the limiting factor.
-
-### VLIW: Massive Parallelism
-
-The "VLIW" part means **one instruction bundle = one cycle**. Each bundle can contain multiple operations across different engines, all executing **in parallel**:
-
-| Engine | Parallel units | What it does |
-|--------|----------------|--------------|
-| ALU | **12** | Scalar arithmetic: `+`, `-`, `*`, `/`, `^`, `&`, `\|`, `<<`, `>>`, `%`, `<`, `==` |
-| VALU | **6** | Same ops as ALU, but each operates on **8 elements** (SIMD) |
-| LOAD | **2** | `load`: mem→scratch, `vload`: 8 consecutive words, `const`: immediate |
-| STORE | **2** | `store`: scratch→mem, `vstore`: 8 consecutive words |
-| FLOW | **1** | `select` (branchless conditional), `jump`, `cond_jump`, `halt` |
-
-That's **12 scalar ALUs + 6 vector ALUs + 2 load units + 2 store units + 1 flow unit** all firing every cycle. With VALU processing 8 elements each, you could theoretically do `12 + 6×8 = 60` arithmetic operations per cycle.
-
-**The challenge**: The baseline uses one operation per cycle. Your job is to pack independent operations together to saturate all that hardware.
+- **Main Memory**: Where the problem data lives. ALU/VALU can't access it directly.
+- **Scratch Space**: 1536 words of fast storage. All compute operations read/write scratch addresses.
+- **Bottleneck**: Only **2 loads** and **2 stores** per cycle. This is often the limiting factor, not compute.
 
 ---
 
