@@ -31,25 +31,13 @@ Here's what we're dealing with:
 ```mermaid
 flowchart TB
     subgraph cycle["⚡ Single Cycle Execution"]
-        direction LR
-        ALU["<b>ALU</b><br/>12 slots"]
-        VALU["<b>VALU</b><br/>6 slots<br/>(VLEN=8)"]
-        LOAD["<b>LOAD</b><br/>2 slots"]
-        STORE["<b>STORE</b><br/>2 slots"]
-        FLOW["<b>FLOW</b><br/>1 slot"]
+        ALU["<b>ALU</b><br/>12 slots"] ~~~ VALU["<b>VALU</b><br/>6 slots<br/>(VLEN=8)"] ~~~ LOAD["<b>LOAD</b><br/>2 slots"] ~~~ STORE["<b>STORE</b><br/>2 slots"] ~~~ FLOW["<b>FLOW</b><br/>1 slot"]
     end
     
-    subgraph scratch["📦 Scratch Space (1536 words)"]
-        direction LR
-        REG["registers + constants + cache"]
-    end
+    scratch["📦 Scratch Space (1536 words)<br/>registers + constants + cache"]
     
     subgraph mem["💾 Main Memory"]
-        direction LR
-        HEADER["Header<br/>(7 words)"]
-        TREE["Tree Values<br/>(2047 words)"]
-        IDX["Indices<br/>(256 words)"]
-        VAL["Values<br/>(256 words)"]
+        HEADER["Header<br/>(7)"] ~~~ TREE["Tree<br/>(2047)"] ~~~ IDX["Indices<br/>(256)"] ~~~ VAL["Values<br/>(256)"]
     end
     
     cycle --> scratch
