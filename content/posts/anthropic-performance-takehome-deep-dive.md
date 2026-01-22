@@ -49,21 +49,21 @@ flowchart LR
 
 ### VLIW: Parallel Execution
 
-The "VLIW" part means one instruction bundle contains **multiple operations that execute in parallel**:
+The "VLIW" part means **one instruction bundle = one cycle**, and each bundle contains multiple operations that execute in parallel:
 
 ```mermaid
 flowchart TB
-    subgraph bundle["📦 ONE INSTRUCTION BUNDLE = ONE CYCLE"]
-        subgraph compute["Compute (all parallel)"]
-            ALU["<b>ALU</b><br/>+, -, *, /, ^, &, |, <<, >>, %, <, ==<br/>⚡ up to 12 ops/cycle"]
-            VALU["<b>VALU</b><br/>Same ops but on 8-element vectors<br/>⚡ up to 6 ops/cycle"]
+    subgraph bundle["Instruction Bundle"]
+        subgraph compute["Compute"]
+            ALU["<b>ALU</b><br/>+, -, *, /, ^, &, |, <<, >><br/>⚡ 12 ops/cycle"]
+            VALU["<b>VALU</b><br/>Same ops, 8 elements<br/>⚡ 6 ops/cycle"]
         end
         subgraph memops["Memory"]
-            LOAD["<b>LOAD</b><br/>mem→scratch, const→scratch<br/>⚡ up to 2 ops/cycle"]
-            STORE["<b>STORE</b><br/>scratch→mem<br/>⚡ up to 2 ops/cycle"]
+            LOAD["<b>LOAD</b><br/>⚡ 2 ops/cycle"]
+            STORE["<b>STORE</b><br/>⚡ 2 ops/cycle"]
         end
         subgraph control["Control"]
-            FLOW["<b>FLOW</b><br/>select, jump, halt<br/>⚡ 1 op/cycle"]
+            FLOW["<b>FLOW</b><br/>⚡ 1 op/cycle"]
         end
     end
 ```
