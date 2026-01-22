@@ -29,8 +29,9 @@ I'm [Tristan](https://github.com/trirpi) ([@trirpi](https://twitter.com/trirpi))
 Here's what we're dealing with:
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph cycle["⚡ Single Cycle Execution"]
+        direction LR
         ALU["<b>ALU</b><br/>12 slots"]
         VALU["<b>VALU</b><br/>6 slots<br/>(VLEN=8)"]
         LOAD["<b>LOAD</b><br/>2 slots"]
@@ -39,10 +40,12 @@ flowchart LR
     end
     
     subgraph scratch["📦 Scratch Space (1536 words)"]
+        direction LR
         REG["registers + constants + cache"]
     end
     
     subgraph mem["💾 Main Memory"]
+        direction LR
         HEADER["Header<br/>(7 words)"]
         TREE["Tree Values<br/>(2047 words)"]
         IDX["Indices<br/>(256 words)"]
