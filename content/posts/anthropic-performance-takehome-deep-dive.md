@@ -1,6 +1,7 @@
 +++
 author = "Tristan Trouwen"
 title = "Deep Dive: Anthropic's Performance Take-Home (The One Claude Beat Humans At)"
+slug = "anthropic-performance-takehome"
 date = "2026-01-21"
 description = "A detailed breakdown of Anthropic's original performance take-home test - the one Claude Opus 4.5 beat most humans at. We'll explore the custom VLIW SIMD architecture simulator, the tree traversal problem, and why this challenge is so fascinating."
 mermaid = true
