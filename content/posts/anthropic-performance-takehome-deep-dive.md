@@ -26,36 +26,59 @@ I'm [Tristan](https://github.com/trirpi) ([@trirpi](https://twitter.com/trirpi))
 
 ## The Architecture at a Glance
 
-Here's what we're dealing with:
+This is a **VLIW** (Very Long Instruction Word) **SIMD** (Single Instruction Multiple Data) processor. Let me break down what that means.
+
+### Memory Hierarchy
+
+```mermaid
+flowchart LR
+    subgraph mem["💾 MAIN MEMORY"]
+        DATA["Problem Data<br/>(tree, indices, values)"]
+    end
+    
+    subgraph scratch["📦 SCRATCH SPACE (1536 words)"]
+        REG["Works like registers + cache<br/>All ALU ops read/write here"]
+    end
+    
+    mem <-->|"LOAD: mem → scratch<br/>STORE: scratch → mem<br/>⚠️ Only 2 each per cycle!"| scratch
+```
+
+- **Main Memory**: Where the problem input lives (tree nodes, batch indices, batch values). Persists across the program.
+- **Scratch Space**: Fast 1536-word storage. Think of it as registers. ALU operations *only* read/write scratch - they can't touch main memory directly.
+- **Bandwidth bottleneck**: Only **2 loads** and **2 stores** per cycle. This is often the limiting factor.
+
+### VLIW: Parallel Execution
+
+The "VLIW" part means one instruction bundle contains **multiple operations that execute in parallel**:
 
 ```mermaid
 flowchart TB
-    subgraph cycle["⚡ Single Cycle Execution"]
-        ALU["<b>ALU</b><br/>12 slots"] ~~~ VALU["<b>VALU</b><br/>6 slots<br/>(VLEN=8)"] ~~~ LOAD["<b>LOAD</b><br/>2 slots"] ~~~ STORE["<b>STORE</b><br/>2 slots"] ~~~ FLOW["<b>FLOW</b><br/>1 slot"]
+    subgraph bundle["📦 ONE INSTRUCTION BUNDLE = ONE CYCLE"]
+        subgraph compute["Compute (all parallel)"]
+            ALU["<b>ALU</b><br/>+, -, *, /, ^, &, |, <<, >>, %, <, ==<br/>⚡ up to 12 ops/cycle"]
+            VALU["<b>VALU</b><br/>Same ops but on 8-element vectors<br/>⚡ up to 6 ops/cycle"]
+        end
+        subgraph memops["Memory"]
+            LOAD["<b>LOAD</b><br/>mem→scratch, const→scratch<br/>⚡ up to 2 ops/cycle"]
+            STORE["<b>STORE</b><br/>scratch→mem<br/>⚡ up to 2 ops/cycle"]
+        end
+        subgraph control["Control"]
+            FLOW["<b>FLOW</b><br/>select, jump, halt<br/>⚡ 1 op/cycle"]
+        end
     end
-    
-    scratch["📦 Scratch Space (1536 words)<br/>registers + constants + cache"]
-    
-    subgraph mem["💾 Main Memory"]
-        HEADER["Header<br/>(7)"] ~~~ TREE["Tree<br/>(2047)"] ~~~ IDX["Indices<br/>(256)"] ~~~ VAL["Values<br/>(256)"]
-    end
-    
-    cycle --> scratch
-    scratch <--> mem
 ```
 
-**How it flows:**
-- All 5 engines (ALU, VALU, LOAD, STORE, FLOW) execute **in parallel** every cycle - that's the VLIW magic
-- Engines read/write to **Scratch Space**, which acts like a register file + cache
-- LOAD/STORE move data between Scratch and **Main Memory**, where the actual problem data lives
+**In a single cycle, you can execute ALL of these simultaneously:**
 
-The key insight: **multiple engines execute in parallel each cycle**. In a single clock cycle, you can run:
-- 12 scalar ALU ops
-- 6 vector ALU ops (each processing 8 elements)
-- 2 loads + 2 stores
-- 1 flow control op
+| Engine | Max ops/cycle | What it does |
+|--------|---------------|--------------|
+| ALU | 12 | Scalar arithmetic: `+`, `-`, `*`, `/`, `^`, `&`, `\|`, `<<`, `>>`, `%`, `<`, `==` |
+| VALU | 6 | Vector arithmetic on 8 elements at once (same ops as ALU) |
+| LOAD | 2 | `load`: mem→scratch, `vload`: 8 consecutive words, `const`: immediate value |
+| STORE | 2 | `store`: scratch→mem, `vstore`: 8 consecutive words |
+| FLOW | 1 | `select` (branchless conditional), `jump`, `cond_jump`, `halt` |
 
-That's the VLIW part. The challenge is actually *using* all that parallelism.
+**The challenge**: The baseline uses one operation per cycle. Your job is to pack operations together to use all that parallelism.
 
 ---
 
