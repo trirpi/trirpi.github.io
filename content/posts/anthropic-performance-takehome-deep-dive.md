@@ -47,38 +47,21 @@ flowchart LR
 - **Scratch Space**: Fast 1536-word storage. Think of it as registers. ALU operations *only* read/write scratch - they can't touch main memory directly.
 - **Bandwidth bottleneck**: Only **2 loads** and **2 stores** per cycle. This is often the limiting factor.
 
-### VLIW: Parallel Execution
+### VLIW: Massive Parallelism
 
-The "VLIW" part means **one instruction bundle = one cycle**, and each bundle contains multiple operations that execute in parallel:
+The "VLIW" part means **one instruction bundle = one cycle**. Each bundle can contain multiple operations across different engines, all executing **in parallel**:
 
-```mermaid
-flowchart TB
-    subgraph bundle["Instruction Bundle"]
-        subgraph compute["Compute"]
-            ALU["<b>ALU</b><br/>+, -, *, /, ^, &, |, <<, >><br/>⚡ 12 ops/cycle"]
-            VALU["<b>VALU</b><br/>Same ops, 8 elements<br/>⚡ 6 ops/cycle"]
-        end
-        subgraph memops["Memory"]
-            LOAD["<b>LOAD</b><br/>⚡ 2 ops/cycle"]
-            STORE["<b>STORE</b><br/>⚡ 2 ops/cycle"]
-        end
-        subgraph control["Control"]
-            FLOW["<b>FLOW</b><br/>⚡ 1 op/cycle"]
-        end
-    end
-```
+| Engine | Parallel units | What it does |
+|--------|----------------|--------------|
+| ALU | **12** | Scalar arithmetic: `+`, `-`, `*`, `/`, `^`, `&`, `\|`, `<<`, `>>`, `%`, `<`, `==` |
+| VALU | **6** | Same ops as ALU, but each operates on **8 elements** (SIMD) |
+| LOAD | **2** | `load`: mem→scratch, `vload`: 8 consecutive words, `const`: immediate |
+| STORE | **2** | `store`: scratch→mem, `vstore`: 8 consecutive words |
+| FLOW | **1** | `select` (branchless conditional), `jump`, `cond_jump`, `halt` |
 
-**In a single cycle, you can execute ALL of these simultaneously:**
+That's **12 scalar ALUs + 6 vector ALUs + 2 load units + 2 store units + 1 flow unit** all firing every cycle. With VALU processing 8 elements each, you could theoretically do `12 + 6×8 = 60` arithmetic operations per cycle.
 
-| Engine | Max ops/cycle | What it does |
-|--------|---------------|--------------|
-| ALU | 12 | Scalar arithmetic: `+`, `-`, `*`, `/`, `^`, `&`, `\|`, `<<`, `>>`, `%`, `<`, `==` |
-| VALU | 6 | Vector arithmetic on 8 elements at once (same ops as ALU) |
-| LOAD | 2 | `load`: mem→scratch, `vload`: 8 consecutive words, `const`: immediate value |
-| STORE | 2 | `store`: scratch→mem, `vstore`: 8 consecutive words |
-| FLOW | 1 | `select` (branchless conditional), `jump`, `cond_jump`, `halt` |
-
-**The challenge**: The baseline uses one operation per cycle. Your job is to pack operations together to use all that parallelism.
+**The challenge**: The baseline uses one operation per cycle. Your job is to pack independent operations together to saturate all that hardware.
 
 ---
 
