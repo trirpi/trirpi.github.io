@@ -34,6 +34,7 @@ markup:
       unsafe: true
 
 params:
+  mermaid: true
   author: Tristan Trouwen
   description: A blog where I venture into the worlds of music, code, AI, and compilers.
   
