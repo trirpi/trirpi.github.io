@@ -166,21 +166,18 @@ That's `256 × 16 = 4096` traversal steps, each involving a hash computation.
 
 ### The Hash Function
 
-```mermaid
-flowchart LR
-    IN(["🔢 Input: a"]) --> S0
-    S0["Stage 0<br/>a = (a + 0x7ED55D16) + (a << 12)"] --> S1
-    S1["Stage 1<br/>a = (a ^ 0xC761C23C) ^ (a >> 19)"] --> S2
-    S2["Stage 2<br/>a = (a + 0x165667B1) + (a << 5)"] --> S3
-    S3["Stage 3<br/>a = (a + 0xD3A2646C) ^ (a << 9)"] --> S4
-    S4["Stage 4<br/>a = (a + 0xFD7046C5) + (a << 3)"] --> S5
-    S5["Stage 5<br/>a = (a ^ 0xB55A4F09) ^ (a >> 16)"] --> OUT
-    OUT(["🎯 Output hash"])
-```
+The hash runs 6 stages, each doing `a = (a op1 const) op2 (a op3 shift)`:
 
-Each stage = 3 ALU ops: `tmp1 = a op1 const`, `tmp2 = a op3 shift`, `a = tmp1 op2 tmp2`
+| Stage | Formula |
+|-------|---------|
+| 0 | `a = (a + 0x7ED55D16) + (a << 12)` |
+| 1 | `a = (a ^ 0xC761C23C) ^ (a >> 19)` |
+| 2 | `a = (a + 0x165667B1) + (a << 5)` |
+| 3 | `a = (a + 0xD3A2646C) ^ (a << 9)` |
+| 4 | `a = (a + 0xFD7046C5) + (a << 3)` |
+| 5 | `a = (a ^ 0xB55A4F09) ^ (a >> 16)` |
 
-**Total: 6 stages × 3 ops = 18 ALU operations per hash**
+Each stage = 3 ALU ops. **Total: 6 × 3 = 18 ALU operations per hash.**
 
 The hash is defined [data-driven](https://github.com/anthropics/original_performance_takehome/blob/main/problem.py#L439-L464) for easy kernel implementation:
 
